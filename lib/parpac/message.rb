@@ -12,6 +12,8 @@ module ParPac
   CANCEL = 8
   PORT = 9
 
+  class MessageError < StandardError; end
+
   class Message
 
     def initialize cmd, payload = nil
@@ -21,10 +23,15 @@ module ParPac
 
     def self.parse raw_message
       message_size = raw_message[0..3].unpack("N").first
-      cmd = raw_message[3].unpack("C").first
-      payload = raw_message[4..-1]
+      cmd = raw_message[4].unpack("C").first
+      payload = raw_message[5..-1]
 
-      self.new(cmd, payload)
+      raise MessageError, "Message is malformed" if message_size != cmd.to_s.size + payload.size
+
+      case cmd
+      when REQUEST
+        RequestMessage.parse(payload)
+      end
     end
 
     def cmd
@@ -34,12 +41,26 @@ module ParPac
     def to_wire_format
       if @payload
         size = @cmd.to_s.size + @payload.size
-        [size, @cmd, @payload].pack("NCa")
+        [size, @cmd, @payload].pack("NCa*")
       else
         size = @cmd.to_s.size
         [size, @cmd].pack("NC")
       end
     end
 
+  end
+
+  class RequestMessage < Message
+    def initialize cmd, index, beginbyte, length
+      @cmd = cmd
+      @index = index
+      @begin = beginbyte
+      @length = length
+    end
+
+    def self.parse(payload)
+      index, beginbyte, length = payload.unpack("NNN")
+      self.new(REQUEST, index, beginbyte, length)
+    end
   end
 end

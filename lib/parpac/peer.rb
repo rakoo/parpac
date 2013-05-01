@@ -4,16 +4,15 @@ module ParPac
   class Peer
     include Celluloid
 
-    def initialize socket, info_hash, peer_id, self_peer_id
+    def initialize socket, info_hash, tdata, peer_id, self_peer_id
       @socket = socket
       @info_hash = info_hash
+      @tdata = tdata
       @peer_id = peer_id
       @self_peer_id = self_peer_id
 
       # just for logging/debugging purpose
       _, @port, @host = socket.peeraddr
-
-      puts "taking care of #{peer_id.to_hex} for #{peer_id.to_hex}"
 
       respond_handshake
       send_bitfield
@@ -60,8 +59,8 @@ module ParPac
       case message.cmd
       when HAVE
       when REQUEST
+        p message
       when CANCEL
-      when PORT
         puts "op"
 
 
@@ -72,6 +71,7 @@ module ParPac
       when NOT_INTERESTED
       when BITFIELD
       when PIECE
+      when PORT
         puts "noop"
       end
     end
@@ -95,7 +95,9 @@ module ParPac
     end
 
     def send_bitfield
-      @socket.print Message.new(BITFIELD).to_wire_format
+      pieces_nbr = @tdata["info"]["pieces"].size / 20
+      bitfield = pieces_nbr.times.inject("") {|sum, n| sum << 1}
+      @socket.print Message.new(BITFIELD, bitfield).to_wire_format
     end
   end
 end

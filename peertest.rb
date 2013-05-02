@@ -77,4 +77,14 @@ request_msg << "\0\0\0\0" # begin
 request_msg << "\0\0\x3F\xFF"  # length
 socket.print "\0\0\0\xd" + request_msg
 
+data = socket.readpartial(4)
+puts "; received #{data.size} bytes"
+message_size = data.unpack("N").first
+puts "\t;message is #{message_size} bytes long"
+message = socket.readpartial(message_size)
+
+cmd, payload = message.unpack("Ca*")
+puts "\t;cmd: #{cmd}"
+puts "\t; payload size: #{payload.size}"
+
 socket.close

@@ -51,10 +51,13 @@ module ParPac
   end
 
   class RequestMessage < Message
+
+    attr_reader :index, :beginbyte, :length
+
     def initialize cmd, index, beginbyte, length
       @cmd = cmd
       @index = index
-      @begin = beginbyte
+      @beginbyte = beginbyte
       @length = length
     end
 
@@ -63,4 +66,19 @@ module ParPac
       self.new(REQUEST, index, beginbyte, length)
     end
   end
+
+  class PieceMessage < Message
+
+    def initialize index, beginbyte, length, block
+      @cmd = REQUEST
+      @index = index
+      @beginbyte = beginbyte
+      @length = length
+      @block = block
+
+      @payload = [index, beginbyte, length, block].pack("NNNa*")
+    end
+
+  end
+
 end

@@ -3,6 +3,7 @@
 require 'celluloid/io'
 require 'cgi'
 require 'digest/sha1'
+require 'trollop'
 
 require 'parpac'
 
@@ -12,15 +13,31 @@ module ParPac
   class EchoServer
     include Celluloid::IO
 
-    def initialize(host, port, dir)
+    def initialize(host, port, opts)
       puts "*** Starting echo server on #{host}:#{port}"
 
       # Since we included Celluloid::IO, we're actually making a
       # Celluloid::IO::TCPServer here
       @server = TCPServer.new(host, port)
-      @infohashes = []
       @peer_id = Digest::SHA1.digest(Time.now.to_s)
-      @dir = dir
+      @filedir = opts[:filedir]
+      @datadir = opts[:datadir]
+
+      # hash => filename
+      @infohashes = Dir.entries(@datadir).inject({}) do |sum, entry|
+        next sum if entry == '.' or entry == '..'
+        next sum unless entry.match(/\.torrent$/) # this is pretty weak
+
+        file = File.join(@datadir, entry)
+        next sum unless File.file? file
+
+        decoded = BEncode.load_file(file)
+        info_hash = Digest::SHA1.digest(BEncode.dump(decoded["info"]))
+
+        sum.merge({info_hash => entry})
+      end
+
+      puts "*** Init done, starting run"
       async.run
     end
 
@@ -48,12 +65,19 @@ module ParPac
 
       info_hash = socket.read(20)
       puts "; info_hash: #{info_hash.to_hex}"
-      torrent_data = get_torrent_data(info_hash)
+      torrent_data = BEncode.load_file(File.join(@datadir, @infohashes[info_hash]))
 
       peer_id = socket.read(20)
       puts "; peer_id: #{peer_id.to_hex}"
 
-      peer = Peer.new(socket, info_hash, torrent_data, peer_id, @peer_id)
+      filename = File.join(@filedir, @infohashes[info_hash].sub(/\.torrent$/,''))
+      file_actor = Celluloid::Actor[filename.to_sym]
+      if file_actor == nil
+        FileReader.supervise_as filename.to_sym, filename
+        file_actor = Celluloid::Actor[filename.to_sym]
+      end
+
+      peer = Peer.new(socket, info_hash, filename, torrent_data, peer_id, @peer_id)
     rescue EOFError
       puts "*** #{host}:#{port} disconnected"
       peer.close
@@ -62,19 +86,15 @@ module ParPac
       peer.close
     end
 
-    def add_managed_infohash infohash
-      @infohashes << infohash
-    end
-
-    def get_torrent_data info_hash
-      BEncode.load_file("#{@dir}/linux-3.8.4-1-x86_64.pkg.tar.xz.torrent")
-    end
-
   end
 end
 
 if __FILE__ == $0
-  dir = "/home/rakoo/tmp/pacman"
-  ParPac::EchoServer.new "0.0.0.0", 9801, dir
+  opts = Trollop::options do
+    opt :filedir, "The directory where your package live, typically /var/cache/pacman/pkg", :default => "/var/cache/pacman/pkg"
+    opt :datadir, "The directory for tmp data (torrents, ...)", :default => "/home/rakoo/tmp/pacman"
+  end
+
+  ParPac::EchoServer.new "0.0.0.0", 9801, opts
   sleep
 end

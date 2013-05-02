@@ -4,10 +4,11 @@ module ParPac
   class Peer
     include Celluloid
 
-    def initialize socket, info_hash, tdata, peer_id, self_peer_id
+    def initialize socket, info_hash, filename, tdata, peer_id, self_peer_id
       @socket = socket
       @info_hash = info_hash
       @tdata = tdata
+      @filename = filename
       @peer_id = peer_id
       @self_peer_id = self_peer_id
 
@@ -59,7 +60,7 @@ module ParPac
       case message.cmd
       when HAVE
       when REQUEST
-        p message
+        process_request message
       when CANCEL
         puts "op"
 
@@ -74,6 +75,15 @@ module ParPac
       when PORT
         puts "noop"
       end
+    end
+
+    def process_request request_message
+
+      file_actor = Celluloid::Actor[@filename.to_sym]
+      offset = request_message.index * 32768 + request_message.beginbyte
+      block = file_actor.future.read offset, request_message.length
+
+      @socket.print PieceMessage.new(request_message.index, request_message.beginbyte, block.value.bytesize, block.value).to_wire_format
     end
 
     def respond_handshake

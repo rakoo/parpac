@@ -1,5 +1,6 @@
 require 'parpac/peer'
 require 'parpac/message'
+require 'parpac/filereader'
 
 require 'bencode'
 

@@ -83,7 +83,7 @@ module ParPac
       offset = request_message.index * 32768 + request_message.beginbyte
       block = file_actor.future.read offset, request_message.length
 
-      @socket.print PieceMessage.new(request_message.index, request_message.beginbyte, block.value.bytesize, block.value).to_wire_format
+      @socket.print PieceMessage.new(request_message.index, request_message.beginbyte, block).to_wire_format
     end
 
     def respond_handshake

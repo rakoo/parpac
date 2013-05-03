@@ -69,14 +69,11 @@ module ParPac
 
   class PieceMessage < Message
 
-    def initialize index, beginbyte, length, block
+    def initialize index, beginbyte, blockfuture
       @cmd = REQUEST
-      @index = index
-      @beginbyte = beginbyte
-      @length = length
-      @block = block
+      block = blockfuture.value
 
-      @payload = [index, beginbyte, length, block].pack("NNNa*")
+      @payload = [index, beginbyte, block.bytesize, block].pack("NNNa*")
     end
 
   end

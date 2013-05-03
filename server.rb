@@ -95,6 +95,6 @@ if __FILE__ == $0
     opt :datadir, "The directory for tmp data (torrents, ...)", :default => "/home/rakoo/tmp/pacman"
   end
 
-  ParPac::EchoServer.new "0.0.0.0", 9801, opts
+  ParPac::EchoServer.new "0.0.0.0", 6881, opts
   sleep
 end

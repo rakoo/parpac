@@ -1,0 +1,40 @@
+Participative Pacman
+
+# Presentation
+
+This is an attempt at using distributed means of exchanging packets for
+pacman, the Archlinux package manager (hence the name). Inspiration
+comes from [apt-p2p](http://www.camrdale.org/apt-p2p/), a working
+equivalent for Debian.
+
+Where apt-p2p uses standard HTTP for data exchanging and Kademlia-like
+DHT for finding peers, I tried and stick to basic Bittorrent, because
+it's a well-established player in the field, is simple and I wanted to
+try it.
+
+The basic idea is to have one torrent per package. Torrent files are not
+seen by the user; all he sees are info_hashes, as used in [magnet
+links](https://en.wikipedia.org/wiki/Magnet_URI_scheme). The
+correspondance with package identifiers (pacman provides sha1 and md5)
+  would be done by the tracker. In a sense, this is pretty similar to
+  what apt-p2p set out to do.
+
+The actual transfer of data, again, is done with bittorrent. A pretty
+useful description can be found
+[here](https://wiki.theory.org/BitTorrentSpecification).
+
+# Current status
+
+A basic tracker (pptracker.rb) should be working. There is some code for
+the seed part, but nothing for the leech.
+I realised a socket can only ever be used for one torrent at a time;
+there is no multiplexing. So if you want to download multiple packets,
+      you have to open multiple sockets, which is a _huge_ waste of
+      resources.
+
+A more useful way to do so would be to keep the tracker, have every peer
+serve packets through standard HTTP/1.1 with pipelining, and shovel the
+urls provided by the tracker to
+[reflector](https://wiki.archlinux.org/index.php/Reflector). The rest
+(breaking parts, requesting parallel servers, ...) is taken care of by
+[powerpill](https://wiki.archlinux.org/index.php/Powerpill).
